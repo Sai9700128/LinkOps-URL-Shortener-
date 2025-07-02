@@ -12,18 +12,20 @@ import java.time.Duration;
 @Configuration
 public class CacheConfig {
 
-    @Bean
-    public RedisCacheManagerBuilderCustomizer redisCacheManagerBuilderCustomizer() {
-        return (builder) -> builder
-                .withCacheConfiguration("token_validation",
-                        RedisCacheConfiguration.defaultCacheConfig()
-                                .entryTtl(Duration.ofMinutes(5))
-                                .serializeValuesWith(RedisSerializationContext.SerializationPair
-                                        .fromSerializer(new GenericJackson2JsonRedisSerializer())))
-                .withCacheConfiguration("user_tokens",
-                        RedisCacheConfiguration.defaultCacheConfig()
-                                .entryTtl(Duration.ofMinutes(60))
-                                .serializeValuesWith(RedisSerializationContext.SerializationPair
-                                        .fromSerializer(new GenericJackson2JsonRedisSerializer())));
-    }
+        @Bean
+        public RedisCacheManagerBuilderCustomizer redisCacheManagerBuilderCustomizer() {
+                return (builder) -> builder
+                                .withCacheConfiguration("token_validation",
+                                                RedisCacheConfiguration.defaultCacheConfig()
+                                                                .entryTtl(Duration.ofMinutes(5))
+                                                                .serializeValuesWith(
+                                                                                RedisSerializationContext.SerializationPair
+                                                                                                .fromSerializer(new GenericJackson2JsonRedisSerializer())))
+                                .withCacheConfiguration("user_tokens",
+                                                RedisCacheConfiguration.defaultCacheConfig()
+                                                                .entryTtl(Duration.ofMinutes(60))
+                                                                .serializeValuesWith(
+                                                                                RedisSerializationContext.SerializationPair
+                                                                                                .fromSerializer(new GenericJackson2JsonRedisSerializer())));
+        }
 }
