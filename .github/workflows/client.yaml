@@ -22,6 +22,8 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+        working-directory: client
 
       - name: Building the application
         run: npm run build
+        working-directory: client
