@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -70,14 +70,12 @@ const Dashboard = () => {
 
   const URL_API_BASE = 'http://localhost:8083/api';
 
-  useEffect(() => {
-    if (activeTab === 1) { // URL Shortener tab
-      checkServiceConnection();
-      loadUrlData();
-    }
-  }, [activeTab]);
+  // Memoized functions to prevent unnecessary re-renders
+  const showSnackbar = useCallback((message, severity) => {
+    setSnackbar({ open: true, message, severity });
+  }, []);
 
-  const getHeaders = () => {
+  const getHeaders = useCallback(() => {
     const token = localStorage.getItem('accessToken');
     if (!token) {
       showSnackbar('Authentication required. Please login again.', 'warning');
@@ -90,9 +88,9 @@ const Dashboard = () => {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     };
-  };
+  }, [showSnackbar, logout, navigate]);
 
-  const checkServiceConnection = async () => {
+  const checkServiceConnection = useCallback(async () => {
     try {
       const response = await fetch(`${URL_API_BASE}/health`);
       if (response.ok) {
@@ -105,17 +103,9 @@ const Dashboard = () => {
       setConnectionStatus('failed');
       showSnackbar('Cannot connect to URL service. Please ensure it\'s running on port 8083.', 'error');
     }
-  };
+  }, [URL_API_BASE, showSnackbar]);
 
-  const loadUrlData = async () => {
-    if (connectionStatus === 'failed') return;
-    
-    setDataLoading(true);
-    await Promise.all([fetchUrls(), fetchStats()]);
-    setDataLoading(false);
-  };
-
-  const fetchUrls = async () => {
+  const fetchUrls = useCallback(async () => {
     try {
       const response = await fetch(`${URL_API_BASE}/urls?page=0&size=20&sortBy=createdAt&sortDirection=desc`, {
         headers: getHeaders()
@@ -135,9 +125,9 @@ const Dashboard = () => {
       console.error('Error fetching URLs:', error);
       showSnackbar('Network error while loading URLs', 'error');
     }
-  };
+  }, [URL_API_BASE, getHeaders, showSnackbar, logout, navigate]);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const response = await fetch(`${URL_API_BASE}/stats`, {
         headers: getHeaders()
@@ -154,7 +144,23 @@ const Dashboard = () => {
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
-  };
+  }, [URL_API_BASE, getHeaders, showSnackbar, logout, navigate]);
+
+  const loadUrlData = useCallback(async () => {
+    if (connectionStatus === 'failed') return;
+    
+    setDataLoading(true);
+    await Promise.all([fetchUrls(), fetchStats()]);
+    setDataLoading(false);
+  }, [connectionStatus, fetchUrls, fetchStats]);
+
+  // Fixed useEffect with proper dependencies
+  useEffect(() => {
+    if (activeTab === 1) { // URL Shortener tab
+      checkServiceConnection();
+      loadUrlData();
+    }
+  }, [activeTab, checkServiceConnection, loadUrlData]);
 
   const createShortUrl = async (e) => {
     e.preventDefault();
@@ -185,7 +191,7 @@ const Dashboard = () => {
 
       if (response.ok) {
         const newUrl = await response.json();
-        setUrls([newUrl, ...urls]);
+        setUrls(prevUrls => [newUrl, ...prevUrls]);
         setOriginalUrl('');
         setCustomAlias('');
         showSnackbar(`Short URL created: ${newUrl.shortCode}`, 'success');
@@ -213,7 +219,7 @@ const Dashboard = () => {
       });
 
       if (response.ok) {
-        setUrls(urls.filter(url => url.shortCode !== shortCode));
+        setUrls(prevUrls => prevUrls.filter(url => url.shortCode !== shortCode));
         showSnackbar('URL deleted successfully', 'success');
         fetchStats(); // Refresh stats
       } else if (response.status === 401) {
@@ -238,16 +244,14 @@ const Dashboard = () => {
       // Fallback for older browsers
       const textArea = document.createElement('textarea');
       textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
       document.body.appendChild(textArea);
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
       showSnackbar('Copied to clipboard!', 'success');
     }
-  };
-
-  const showSnackbar = (message, severity) => {
-    setSnackbar({ open: true, message, severity });
   };
 
   const handleLogout = () => {
